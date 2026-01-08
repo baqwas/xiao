@@ -17,7 +17,7 @@ This repository supports three specific variants of the XIAO S3 family:
 ---
 
 ## 📁 Repository Structure
-Following the principle of "Separation of Concerns," the code is organized by board type and then by functional category.
+Following the principle of _Separation of Concerns_, the code is organized by board type and then by functional category.
 
 * **`XIAO_ESP32_S3/`**: Generic IoT and Wi-Fi sketches.
 * **`XIAO_ESP32_S3_Sense/`**: Multimedia and storage-heavy projects.
