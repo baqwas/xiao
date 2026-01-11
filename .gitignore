@@ -1,0 +1,23 @@
+# Compiled binaries
+*.spec
+*.bin
+*.elf
+*.hex
+
+# IDE specific folders
+.pybench/
+.vscode/
+.idea/
+.settings/
+
+# Local build folders created by Arduino IDE
+build/
+libraries/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Ignore sensitive credential files
+secrets.h
+**/*/secrets.h

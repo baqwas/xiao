@@ -1,0 +1,55 @@
+name: Create Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag starting with 'v', e.g., v1.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install XIAO Board Support
+        run: |
+          arduino-cli core update-index --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+
+      - name: Create Mock Library
+        run: |
+          LIB_PATH=$HOME/Arduino/libraries/secrets
+          mkdir -p $LIB_PATH
+          echo 'extern const char* WIFI_SSID;' > $LIB_PATH/secrets.h
+          echo 'extern const char* WIFI_PASS;' >> $LIB_PATH/secrets.h
+          echo '#include "secrets.h"' > $LIB_PATH/secrets.cpp
+          echo 'const char* WIFI_SSID = "RELEASE_MOCK";' >> $LIB_PATH/secrets.cpp
+          echo 'const char* WIFI_PASS = "RELEASE_MOCK";' >> $LIB_PATH/secrets.cpp
+
+      - name: Compile and Export Binaries
+        run: |
+          # Get the tag name (e.g., v1.0.2)
+          TAG_NAME=${{ github.ref_name }}
+          
+          mkdir -p ./build
+          
+          # We use --build-property to define PROJECT_VERSION
+          # Note the escaped quotes so it's treated as a string in C++
+          arduino-cli compile \
+            --fqbn Seeeduino:esp32:xiao_esp32c3 \
+            --build-property "compiler.cpp.extra_flags=\"-DPROJECT_VERSION=\\\"$TAG_NAME\\\"\"" \
+            --output-dir ./build \
+            ./sketches/IoT_Sensor_Node
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./build/*.bin
+            ./build/*.elf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
