@@ -13,6 +13,9 @@
 # Local build folders created by Arduino IDE
 build/
 libraries/
+bin/
+*.elf
+*.hex
 
 # Operating System files
 .DS_Store
