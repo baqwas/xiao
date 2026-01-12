@@ -11,18 +11,20 @@ jobs:
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
-      - name: Install ESP32 Core
+      - name: Clean and Install Platform
         run: |
-          # 1. Initialize configuration
+          # 1. Force a clean config state
+          rm -rf ~/.arduino15
           arduino-cli config init --overwrite
 
-          # 2. Add Seeed Studio index for the XIAO S3 board definitions
-          arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          # 2. Set the ONLY index we want
+          arduino-cli config set board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
 
-          # 3. Update the index
+          # 3. Update index
           arduino-cli core update-index
 
-          # 4. Install the core using the verified namespace
+          # 4. Install EXACTLY what you verified locally
+          # We use the full name to avoid any ambiguity
           arduino-cli core install esp32:esp32
 
       - name: Compile
