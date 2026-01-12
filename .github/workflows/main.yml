@@ -11,21 +11,21 @@ jobs:
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
-      - name: Install Platform Core
+      - name: Install ESP32 Core
         run: |
-          # 1. Add both Seeed and Espressif indices for maximum compatibility
+          # 1. Initialize configuration
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
-          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 
-          # 2. Update index
+          # 2. Add Seeed Studio index for the XIAO S3 board definitions
+          arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+
+          # 3. Update the index
           arduino-cli core update-index
 
-          # 3. Install the specific Seeed ESP32 core
-          # Note: The ID is 'Seeed:esp32' in newer indices, not 'Seeeduino'
+          # 4. Install the core using the verified namespace
           arduino-cli core install esp32:esp32
 
       - name: Compile
         run: |
-          # The FQBN for the XIAO S3 under the Seeed core
+          # Use the verified FQBN for the XIAO ESP32-S3
           arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 ./
