@@ -35,9 +35,9 @@ jobs:
 
           # 4. Install the core (using the broad ESP32 core which includes Seeed)
           # Sometimes Seeed boards are inside 'Seeeduino:esp32', sometimes 'esp32:esp32'
-          arduino-cli core install Seeeduino:esp32 || arduino-cli core install esp32:esp32
+          arduino-cli core install esp32:esp32 || arduino-cli core install esp32:esp32
 
       - name: Compile
         run: |
           # Use the specific FQBN for the XIAO ESP32-S3
-          arduino-cli compile --fqbn Seeeduino:esp32:xiao_esp32s3 ./
+          arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 ./
