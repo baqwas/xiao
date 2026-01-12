@@ -1,0 +1,57 @@
+name: Compile Arduino Sketch
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      # CACHING: This saves about 2-3 minutes per run by storing the 
+      # compilers and tools in GitHub's cache.
+      - name: Cache Arduino Files
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.arduino15/packages
+            ~/.arduino15/staging
+          key: ${{ runner.os }}-arduino-esp32-${{ hashFiles('**/*.ino') }}
+          restore-keys: |
+            ${{ runner.os }}-arduino-esp32-
+
+      - name: Install and Update Platforms
+        run: |
+          arduino-cli core update-index --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          # We use --overwrite to handle potential cache conflicts
+          arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+
+      - name: Install Libraries (Optional)
+        run: |
+          # If your code needs libraries, list them here:
+          # arduino-cli lib install "DHT sensor library"
+          # arduino-cli lib install "Adafruit NeoPixel"
+
+      - name: Compile Sketch
+        run: |
+          # Replace 'YourSketchName.ino' with your actual filename
+          # The FQBN below is specific to the XIAO ESP32-S3
+          arduino-cli compile --fqbn Seeeduino:esp32:xiao_esp32s3 ./ --verbose
+        
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-firmware
+          path: |
+            ./build/**/*.bin
+            ./build/**/*.elf
