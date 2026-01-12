@@ -1,5 +1,4 @@
-name: XIAO S3 Build
-
+name: XIAO_S3_Final_Clean_Build
 on:
   push:
     branches: [ main ]
@@ -9,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -19,25 +17,18 @@ jobs:
 
       - name: Install ESP32 Platform
         run: |
-          # Initialize config and add the Seeed index URL
+          # 1. Clear any potential cached data in the runner
+          rm -rf ~/.arduino15
+
+          # 2. Re-initialize config from scratch
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
-          
-          # Update index to recognize the new URL
+
+          # 3. Update index and install the core
           arduino-cli core update-index
-          
-          # Install the correct core you identified
           arduino-cli core install esp32:esp32
 
       - name: Compile Sketch
         run: |
-          # Using the FQBN for the XIAO ESP32-S3 within the esp32:esp32 core
+          # Use the verified FQBN
           arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 ./ --verbose
-
-      - name: Upload Firmware
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xiao-s3-firmware
-          path: |
-            ./build/**/*.bin
