@@ -13,12 +13,11 @@ jobs:
 
       - name: Install Platform Core
         run: |
-          # 1. Add the Seeed index
           arduino-cli core update-index --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
-          
+          arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           # 2. INSTALL the core (This is the step that was missing/failing)
           arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
-          
+
           # 3. Verify installation
           arduino-cli core list
 
