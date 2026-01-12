@@ -14,12 +14,28 @@ jobs:
       - name: Install Platform Core
         run: |
           arduino-cli core update-index --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
-          arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           # 2. INSTALL the core (This is the step that was missing/failing)
-          arduino-cli core install Seeeduino:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
 
           # 3. Verify installation
           arduino-cli core list
+
+      - name: Install Platform Core
+        run: |
+          # 1. Force the URL into the CLI configuration
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+
+          # 2. Update the index
+          arduino-cli core update-index
+
+          # 3. Search to find the EXACT name the CLI sees
+          arduino-cli core search xiao
+
+          # 4. Install the core (using the broad ESP32 core which includes Seeed)
+          # Sometimes Seeed boards are inside 'Seeeduino:esp32', sometimes 'esp32:esp32'
+          arduino-cli core install Seeeduino:esp32 || arduino-cli core install esp32:esp32
 
       - name: Compile
         run: |
