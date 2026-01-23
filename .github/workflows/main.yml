@@ -33,27 +33,31 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Debug - Spy on Camera Drivers
-        run: |
-          echo "Checking for built-in camera headers..."
-          find /home/runner/.arduino15/packages/esp32/hardware/esp32 -name "esp_camera.h" || echo "Not found in core"
-          
-          echo "Checking existing libraries..."
-          arduino-cli lib list
-
       - name: Install Dependencies
         run: |
-          # Create library folder if it doesn't exist
           mkdir -p /home/runner/Arduino/libraries
-          # Clone the camera driver directly to ensure the S3 has the required headers
           git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
-          # Update index and attempt to install any other generic camera components
           arduino-cli lib update-index
           arduino-cli lib install "ESP32_Camera" || true
 
-      - name: Compile Sketch
+      - name: Compile All Sketches
         run: |
-          arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 ./ --verbose
+          # Find all .ino files, get their directory paths, and sort them uniquely
+          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
+          
+          for sketch in $SKETCHES; do
+            echo "----------------------------------------------------"
+            echo "Compiling sketch in: $sketch"
+            echo "----------------------------------------------------"
+            
+            # Attempt to compile. If one fails, the whole job fails.
+            arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 "$sketch" --verbose
+            
+            if [ $? -ne 0 ]; then
+              echo "❌ Compilation failed for $sketch"
+              exit 1
+            fi
+          done
 
       - name: Upload Artifact
         if: success()
@@ -61,8 +65,8 @@ jobs:
         with:
           name: xiao-s3-firmware
           path: |
-            ./build/**/*.bin
-            ./build/**/*.elf
+            ./**/build/**/*.bin
+            ./**/build/**/*.elf
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -70,7 +74,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            ./build/**/*.bin
-            ./build/**/*.elf
+            ./**/build/**/*.bin
+            ./**/build/**/*.elf
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
