@@ -1,0 +1,11 @@
+# Ignore missing system headers (Arduino.h, etc)
+missingIncludeSystem
+missingInclude
+
+# Ignore unused functions (setup and loop are called by the hardware, not the code)
+unusedFunction:*/main.ino
+unusedFunction:setup
+unusedFunction:loop
+
+# Ignore warnings in specific libraries if you add them later
+# *:lib/*

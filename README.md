@@ -3,7 +3,7 @@
 
 Welcome to the central repository for projects targeting the **Seeed Studio XIAO ESP32-S3** ecosystem. This collection is designed with modularity in mind, separating core hardware capabilities from complex integrated solutions.
 
-[![Compile Arduino Sketch](https://github.com/baqwas/xiao/actions/workflows/main.yml/badge.svg)](https://github.com/baqwas/xiao/actions)
+[![XIAO S3 Build](https://github.com/baqwas/xiao/actions/workflows/main.yml/badge.svg)](https://github.com/baqwas/xiao/actions)
 
 ---
 
