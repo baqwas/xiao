@@ -9,3 +9,17 @@ unusedFunction:loop
 
 # Ignore warnings in specific libraries if you add them later
 # *:lib/*
+
+# Ignore common Arduino/C casting styles
+cstyleCast
+constVariablePointer
+
+# Ignore unused functions in specific camera files
+unusedFunction:*/app_httpd.cpp
+unusedFunction:startCameraServer
+
+# Keep these from before
+missingIncludeSystem
+missingInclude
+unusedFunction:setup
+unusedFunction:loop

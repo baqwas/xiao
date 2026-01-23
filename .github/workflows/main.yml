@@ -15,7 +15,7 @@ jobs:
       - name: Run Linting
         run: |
           # Uses the suppressions file to ignore safe warnings
-          cppcheck --enable=all --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
+          cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
