@@ -1,10 +1,17 @@
 name: XIAO S3 Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+    tags: 
+      - 'v*'
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -14,7 +21,7 @@ jobs:
 
       - name: Run Linting
         run: |
-          # Uses the suppressions file to ignore safe warnings
+          # Relaxed rules to handle ESP32 camera driver coding styles
           cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
 
       - name: Setup Arduino CLI
@@ -27,6 +34,32 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
+      - name: Install Dependencies
+        run: |
+          # Install the camera driver required for XIAO S3 Sense
+          arduino-cli lib install "esp32-camera"
+
       - name: Compile Sketch
         run: |
+          # Compile for XIAO ESP32-S3 and show memory usage
           arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 ./ --verbose
+
+      - name: Upload Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiao-s3-firmware
+          path: |
+            ./build/**/*.bin
+            ./build/**/*.elf
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            ./build/**/*.bin
+            ./build/**/*.elf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
