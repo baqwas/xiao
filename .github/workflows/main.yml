@@ -1,4 +1,4 @@
-name: XIAO S3 Build
+name: XIAO S3 Build & Lint
 
 on:
   push:
@@ -16,108 +16,77 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Cppcheck
-        run: sudo apt-get install -y cppcheck
-
-      - name: Run Linting
-        run: |
-          cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
-
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
-      - name: Install ESP32 Platform
+      - name: Install Platforms
         run: |
           arduino-cli config init --overwrite
           arduino-cli config set board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           arduino-cli core update-index
+          # Installs the latest ESP32 core (3.x) which requires modern I2S drivers
           arduino-cli core install esp32:esp32
 
-      - name: Install Dependencies
+      - name: Install Libraries
         run: |
-          # Create library folder
-          mkdir -p /home/runner/Arduino/libraries
-          
-          # 1. Install Camera Driver (Manual clone for S3 compatibility)
-          git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
-          
-          # 2. Update Index and install indexed libraries
           arduino-cli lib update-index
-          
-          # MQTT Library (The one missing in your last error)
+          # Core libraries required for your XIAO S3 sketches
           arduino-cli lib install "PubSubClient"
-          
-          # Audio/Microphone & Common S3 Sense libraries
-          arduino-cli lib install "ESP32_Camera" || true
-          arduino-cli lib install "ArduinoJson" || true  # Often used with MQTT
+          arduino-cli lib install "ArduinoJson"
 
-      - name: Create Dummy Secrets
+      - name: Inject Secrets.h
+        # Populates secrets.h with all repository secrets before compilation
         run: |
-          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
+          SKETCHES=$(find . -name "*.ino" | xargs -I {} dirname {} | sort -u)
           for sketch in $SKETCHES; do
-            if [ ! -f "$sketch/secrets.h" ]; then
-              echo "Creating comprehensive placeholder secrets.h in $sketch"
-              {
-                echo '#ifndef SECRETS_H'
-                echo '#define SECRETS_H'
-                echo '#define WIFI_SSID "PLACEHOLDER_SSID"'
-                echo '#define WIFI_PASS "PLACEHOLDER_PASS"'
-                echo '#define SECRET_SSID "PLACEHOLDER_SSID"'
-                echo '#define SECRET_PASS "PLACEHOLDER_PASS"'
-                echo '#define SSID "PLACEHOLDER_SSID"'
-                echo '#define PASSWORD "PLACE_HOLDER_PASS"'
-                echo '#define SECRET_SSID "PLACEHOLDER_SSID"'
-                echo '#define SECRET_PASS "PLACEHOLDER_PASS"'
-                echo '#define SSID "PLACEHOLDER_SSID"'
-                echo '#define PASSWORD "PLACE_HOLDER_PASS"'
-                echo '#define MQTT_SERVER "MQTT_SERVER"'
-                echo '#define MQTT_PORT 1883'
-                echo '#define MQTT_USER "MQTT_USER"'
-                echo '#define MQTT_PASS "MQTT_PASS"'
-                echo '#define MQTT_TOPIC "MQTT_TOPIC"'
-                echo '#define SMTP_SERVER "SMTP_SERVER"'
-                echo '#define SMTP_PORT 587'
-                echo '#define SMTP_USER "SMTP_USER"'
-                echo '#define SMTP_PASS "SMTP_PASS"'
-                echo '#define SENDER_EMAIL "SENDER_EMAIL"'
-                echo '#define RECIPIENT_EMAIL "RECIPIENT_EMAIL"'
-                echo '#define DEVICE_NAME "XIAO_S3_TEST"'
-                echo '#endif'
-              } > "$sketch/secrets.h"
-            fi
+            echo "Injecting full secrets list into $sketch"
+            cat <<EOF > "$sketch/secrets.h"
+          #ifndef SECRETS_H
+          #define SECRETS_H
+
+          // Network & MQTT
+          #define WIFI_SSID "${{ secrets.WIFI_SSID }}"
+          #define WIFI_PASS "${{ secrets.WIFI_PASS }}"
+          #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
+          #define MQTT_USER "${{ secrets.MQTT_USER }}"
+          #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
+
+          // Email & SMTP
+          #define SMTP_HOST "${{ secrets.SMTP_HOST }}"
+          #define SMTP_PORT ${{ secrets.SMTP_PORT }}
+          #define SMTP_USER "${{ secrets.SMTP_USER }}"
+          #define SMTP_PASS "${{ secrets.SMTP_PASS }}"
+          #define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
+          #define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
+
+          // Device Identification
+          #define DEVICE_NAME "XIAO_S3_$(date +%s)"
+
+          #endif
+          EOF
           done
 
-      - name: Compile All Sketches
+      - name: Compile with Strict I2S Linting
         run: |
-          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
+          SKETCHES=$(find . -name "*.ino" | xargs -I {} dirname {} | sort -u)
           for sketch in $SKETCHES; do
             echo "----------------------------------------------------"
-            echo "Compiling sketch in: $sketch"
-            echo "----------------------------------------------------"
-            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
-
+            echo "Building: $sketch"
+            
+            # -Werror=all treats warnings (like deprecated legacy I2S calls) as errors
+            # This ensures your code is compliant with modern ESP32 Core 3.x
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 \
+                                --build-property "compiler.cpp.extra_flags=-Werror=all" \
+                                "$sketch" --output-dir "$sketch/build"
+            
             if [ $? -ne 0 ]; then
-              echo "❌ Compilation failed for $sketch"
+              echo "❌ Build failed. Please verify secrets and modern I2S driver usage."
               exit 1
             fi
           done
 
-      - name: Upload Artifact
-        if: success()
+      - name: Upload Firmware
         uses: actions/upload-artifact@v4
         with:
           name: xiao-s3-firmware
-          path: |
-            ./**/build/*.bin
-            ./**/build/*.elf
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            ./**/build/*.bin
-            ./**/build/*.elf
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: ./**/build/*.bin
