@@ -21,6 +21,7 @@ jobs:
 
       - name: Run Linting
         run: |
+          # Relaxed rules for ESP32 camera driver coding styles
           cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
 
       - name: Setup Arduino CLI
@@ -29,20 +30,25 @@ jobs:
       - name: Install ESP32 Platform
         run: |
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+          # Explicitly set the Seeed URL in the global config
+          arduino-cli config set board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
       - name: Install Dependencies
         run: |
           mkdir -p /home/runner/Arduino/libraries
+          # Clone the camera driver directly to ensure headers are present
           git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
           arduino-cli lib update-index
           arduino-cli lib install "ESP32_Camera" || true
 
       - name: Compile All Sketches
         run: |
-          # Find all .ino files, get their directory paths, and sort them uniquely
+          # Debug: Show all installed boards to verify the FQBN exists
+          arduino-cli board listall
+          
+          # Find all directories containing a .ino file
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           
           for sketch in $SKETCHES; do
@@ -50,7 +56,7 @@ jobs:
             echo "Compiling sketch in: $sketch"
             echo "----------------------------------------------------"
             
-            # Attempt to compile. If one fails, the whole job fails.
+            # Perform the compilation
             arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 "$sketch" --verbose
             
             if [ $? -ne 0 ]; then
