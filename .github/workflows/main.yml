@@ -40,18 +40,26 @@ jobs:
           arduino-cli lib update-index
           arduino-cli lib install "ESP32_Camera" || true
 
+      - name: Create Dummy Secrets
+        run: |
+          # Prevents build failure due to missing credentials file
+          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
+          for sketch in $SKETCHES; do
+            if [ ! -f "$sketch/secrets.h" ]; then
+              echo "Creating placeholder secrets.h in $sketch"
+              echo '#define SECRET_SSID "PLACEHOLDER"' > "$sketch/secrets.h"
+              echo '#define SECRET_PASS "PLACEHOLDER"' >> "$sketch/secrets.h"
+            fi
+          done
+
       - name: Compile All Sketches
         run: |
-          # Use the exact FQBN found in the debug logs: XIAO_ESP32S3 (Uppercase)
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
-          
           for sketch in $SKETCHES; do
             echo "----------------------------------------------------"
             echo "Compiling sketch in: $sketch"
             echo "----------------------------------------------------"
-            
             arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose
-            
             if [ $? -ne 0 ]; then
               echo "❌ Compilation failed for $sketch"
               exit 1
