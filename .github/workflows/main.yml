@@ -42,13 +42,20 @@ jobs:
 
       - name: Create Dummy Secrets
         run: |
-          # Prevents build failure due to missing credentials file
+          # Finds every .ino folder and creates a secrets.h that covers multiple naming styles
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             if [ ! -f "$sketch/secrets.h" ]; then
-              echo "Creating placeholder secrets.h in $sketch"
-              echo '#define SECRET_SSID "PLACEHOLDER"' > "$sketch/secrets.h"
-              echo '#define SECRET_PASS "PLACEHOLDER"' >> "$sketch/secrets.h"
+              echo "Creating comprehensive placeholder secrets.h in $sketch"
+              {
+                echo '#ifndef SECRETS_H'
+                echo '#define SECRETS_H'
+                echo '#define WIFI_SSID "PLACEHOLDER_SSID"'
+                echo '#define WIFI_PASS "PLACEHOLDER_PASS"'
+                echo '#define SECRET_SSID "PLACEHOLDER_SSID"'
+                echo '#define SECRET_PASS "PLACEHOLDER_PASS"'
+                echo '#endif'
+              } > "$sketch/secrets.h"
             fi
           done
 
