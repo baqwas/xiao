@@ -21,7 +21,6 @@ jobs:
 
       - name: Run Linting
         run: |
-          # Relaxed rules for ESP32 camera driver coding styles
           cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
 
       - name: Setup Arduino CLI
@@ -30,7 +29,6 @@ jobs:
       - name: Install ESP32 Platform
         run: |
           arduino-cli config init --overwrite
-          # Explicitly set the Seeed URL in the global config
           arduino-cli config set board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
@@ -38,17 +36,13 @@ jobs:
       - name: Install Dependencies
         run: |
           mkdir -p /home/runner/Arduino/libraries
-          # Clone the camera driver directly to ensure headers are present
           git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
           arduino-cli lib update-index
           arduino-cli lib install "ESP32_Camera" || true
 
       - name: Compile All Sketches
         run: |
-          # Debug: Show all installed boards to verify the FQBN exists
-          arduino-cli board listall
-          
-          # Find all directories containing a .ino file
+          # Use the exact FQBN found in the debug logs: XIAO_ESP32S3 (Uppercase)
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           
           for sketch in $SKETCHES; do
@@ -56,8 +50,7 @@ jobs:
             echo "Compiling sketch in: $sketch"
             echo "----------------------------------------------------"
             
-            # Perform the compilation
-            arduino-cli compile --fqbn esp32:esp32:xiao_esp32s3 "$sketch" --verbose
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose
             
             if [ $? -ne 0 ]; then
               echo "❌ Compilation failed for $sketch"
