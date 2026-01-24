@@ -42,7 +42,7 @@ jobs:
 
       - name: Create Dummy Secrets
         run: |
-          # Finds every .ino folder and creates a secrets.h that covers multiple naming styles
+          # Finds every .ino folder and creates a secrets.h with your specific variables
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             if [ ! -f "$sketch/secrets.h" ]; then
@@ -50,10 +50,25 @@ jobs:
               {
                 echo '#ifndef SECRETS_H'
                 echo '#define SECRETS_H'
+                # Standard WiFi variables
                 echo '#define WIFI_SSID "PLACEHOLDER_SSID"'
                 echo '#define WIFI_PASS "PLACEHOLDER_PASS"'
+                # Alternative naming conventions
                 echo '#define SECRET_SSID "PLACEHOLDER_SSID"'
                 echo '#define SECRET_PASS "PLACEHOLDER_PASS"'
+                echo '#define SSID "PLACEHOLDER_SSID"'
+                echo '#define PASSWORD "PLACE_HOLDER_PASS"'
+                echo '#define MQTT_SERVER "MQTT_SERVER"'
+                echo '#define MQTT_PORT "MQTT_PORT"'
+                echo '#define MQTT_USER "MQTT_USER"'
+                echo '#define MQTT_PASS "MQTT_PASS"'
+                echo '#define MQTT_TOPIC "MQTT_TOPIC"'
+                echo '#define SMTP_SERVER "SMTP_SERVER"'
+                echo '#define SMTP_PORT "SMTP_PORT"'
+                echo '#define SMTP_USER "SMTP_USER"'
+                echo '#define SMTP_PASS "SMTP_PASS"'
+                echo '#define SENDER_EMAIL "SENDER_EMAIL"'
+                echo '#define RECIPIENT_EMAIL "RECIPIENT_EMAIL"'
                 echo '#endif'
               } > "$sketch/secrets.h"
             fi
@@ -66,7 +81,9 @@ jobs:
             echo "----------------------------------------------------"
             echo "Compiling sketch in: $sketch"
             echo "----------------------------------------------------"
-            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose
+            # We add --output-dir to make finding artifacts easier later
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
+
             if [ $? -ne 0 ]; then
               echo "❌ Compilation failed for $sketch"
               exit 1
@@ -79,8 +96,8 @@ jobs:
         with:
           name: xiao-s3-firmware
           path: |
-            ./**/build/**/*.bin
-            ./**/build/**/*.elf
+            ./**/build/*.bin
+            ./**/build/*.elf
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -88,7 +105,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            ./**/build/**/*.bin
-            ./**/build/**/*.elf
+            ./**/build/*.bin
+            ./**/build/*.elf
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
