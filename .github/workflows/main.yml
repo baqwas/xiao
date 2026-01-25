@@ -34,40 +34,12 @@ jobs:
         run: |
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
-            echo "Injecting GitHub Secrets into $sketch/secrets.h"
-            # Note the indentation below; it MUST stay indented for YAML.
-            cat <<'EOF' > "$sketch/secrets.h"
-#ifndef SECRETS_H
-#define SECRETS_H
-
-// WiFi Configuration
-#define WIFI_SSID "${{ secrets.WIFI_SSID }}"
-#define WIFI_PASS "${{ secrets.WIFI_PASS }}"
-#define SECRET_SSID "${{ secrets.WIFI_SSID }}"
-#define SECRET_PASS "${{ secrets.WIFI_PASS }}"
-
-// MQTT Configuration
-#define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
-#define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
-#define MQTT_USER "${{ secrets.MQTT_USER }}"
-#define MQTT_PASS "${{ secrets.MQTT_PASS }}"
-#define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
-#define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
-
-// SMTP Email Configuration
-#define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
-#define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
-#define SMTP_USER "${{ secrets.SMTP_USER }}"
-#define SMTP_PASS "${{ secrets.SMTP_PASS }}"
-#define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
-#define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
-
-// Metadata
-#define DEVICE_NAME "XIAO_S3_NODE"
-#define FILE_NAME_PREFIX "IMG_"
-
-#endif
-EOF
+            echo "Generating $sketch/secrets.h"
+            printf '#ifndef SECRETS_H\n#define SECRETS_H\n\n#define WIFI_SSID "%s"\n#define WIFI_PASS "%s"\n#define MQTT_SERVER "%s"\n#define MQTT_PORT %s\n#define MQTT_USER "%s"\n#define MQTT_PASS "%s"\n#define MQTT_TOPIC "%s"\n#define SMTP_SERVER "%s"\n#define SMTP_PORT %s\n#define SMTP_USER "%s"\n#define SMTP_PASS "%s"\n#define SENDER_EMAIL "%s"\n#define RECIPIENT_EMAIL "%s"\n#define DEVICE_NAME "XIAO_S3_NODE"\n#endif\n' \
+            "${{ secrets.WIFI_SSID }}" "${{ secrets.WIFI_PASS }}" \
+            "${{ secrets.MQTT_SERVER }}" "${{ secrets.MQTT_PORT || 1883 }}" "${{ secrets.MQTT_USER }}" "${{ secrets.MQTT_PASS }}" "${{ secrets.MQTT_TOPIC }}" \
+            "${{ secrets.SMTP_SERVER }}" "${{ secrets.SMTP_PORT || 587 }}" "${{ secrets.SMTP_USER }}" "${{ secrets.SMTP_PASS }}" "${{ secrets.SENDER_EMAIL }}" "${{ secrets.RECIPIENT_EMAIL }}" \
+            > "$sketch/secrets.h"
           done
 
       - name: Compile All Sketches
