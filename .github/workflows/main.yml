@@ -1,4 +1,4 @@
-name: XIAO S3 Build
+name: XIAO ESP32-S3 Sense Build
 
 on:
   push:
