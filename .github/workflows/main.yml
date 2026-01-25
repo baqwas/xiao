@@ -50,6 +50,7 @@ jobs:
           #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
           #define MQTT_USER "${{ secrets.MQTT_USER }}"
           #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
+          #define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
 
           // Email & SMTP
           #define SMTP_HOST "${{ secrets.SMTP_HOST }}"
