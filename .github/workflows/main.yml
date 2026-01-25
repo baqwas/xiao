@@ -35,42 +35,42 @@ jobs:
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "Injecting GitHub Secrets into $sketch/secrets.h"
-            # We use sed to strip the YAML indentation from the final file
-            cat <<'EOF' > "$sketch/secrets.h"
-            #ifndef SECRETS_H
-            #define SECRETS_H
+            # IMPORTANT: The following lines MUST be indented with TABS, not spaces.
+            # The '-' in <<-'EOF' tells bash to strip leading tab characters.
+            cat <<-'EOF' > "$sketch/secrets.h"
+							#ifndef SECRETS_H
+							#define SECRETS_H
 
-            // WiFi Configuration
-            #define WIFI_SSID "${{ secrets.WIFI_SSID }}"
-            #define WIFI_PASS "${{ secrets.WIFI_PASS }}"
-            #define SECRET_SSID "${{ secrets.WIFI_SSID }}"
-            #define SECRET_PASS "${{ secrets.WIFI_PASS }}"
+							// WiFi Configuration
+							#define WIFI_SSID "${{ secrets.WIFI_SSID }}"
+							#define WIFI_PASS "${{ secrets.WIFI_PASS }}"
+							#define SECRET_SSID "${{ secrets.WIFI_SSID }}"
+							#define SECRET_PASS "${{ secrets.WIFI_PASS }}"
 
-            // MQTT Configuration
-            #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
-            #define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
-            #define MQTT_USER "${{ secrets.MQTT_USER }}"
-            #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
-            #define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
-            #define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
+							// MQTT Configuration
+							#define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
+							#define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
+							#define MQTT_USER "${{ secrets.MQTT_USER }}"
+							#define MQTT_PASS "${{ secrets.MQTT_PASS }}"
+							#define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
+							#define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
 
-            // SMTP Email Configuration
-            #define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
-            #define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
-            #define SMTP_USER "${{ secrets.SMTP_USER }}"
-            #define SMTP_PASS "${{ secrets.SMTP_PASS }}"
-            #define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
-            #define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
+							// SMTP Email Configuration
+							#define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
+							#define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
+							#define SMTP_USER "${{ secrets.SMTP_USER }}"
+							#define SMTP_PASS "${{ secrets.SMTP_PASS }}"
+							#define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
+							#define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
 
-            // Metadata
-            #define DEVICE_NAME "XIAO_S3_NODE"
-            #define FILE_NAME_PREFIX "IMG_"
+							// Metadata
+							#define DEVICE_NAME "XIAO_S3_NODE"
+							#define FILE_NAME_PREFIX "IMG_"
 
-            #endif
-            EOF
-            # This sed command removes the leading spaces required by YAML 
-            # so the C++ compiler gets a clean header file.
-            sed -i 's/^[[:blank:]]*//' "$sketch/secrets.h"
+							#endif
+							EOF
+            # Ensure no stray leading tabs remain in the final C++ file
+            sed -i 's/^\t//' "$sketch/secrets.h"
           done
 
       - name: Compile All Sketches
