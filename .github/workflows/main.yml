@@ -1,4 +1,4 @@
-name: XIAO ESP32-S3 Sense Build
+name: XIAO S3 Build
 
 on:
   push:
@@ -35,46 +35,47 @@ jobs:
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "Injecting GitHub Secrets into $sketch/secrets.h"
+            # Ensure the cat << EOF block is properly indented within the YAML
             cat << EOF > "$sketch/secrets.h"
-          #ifndef SECRETS_H
-          #define SECRETS_H
+#ifndef SECRETS_H
+#define SECRETS_H
 
-          // WiFi Configuration
-          #define WIFI_SSID "${{ secrets.WIFI_SSID }}"
-          #define WIFI_PASS "${{ secrets.WIFI_PASS }}"
-          #define SECRET_SSID "${{ secrets.WIFI_SSID }}"
-          #define SECRET_PASS "${{ secrets.WIFI_PASS }}"
+// WiFi Configuration
+#define WIFI_SSID "${{ secrets.WIFI_SSID }}"
+#define WIFI_PASS "${{ secrets.WIFI_PASS }}"
+#define SECRET_SSID "${{ secrets.WIFI_SSID }}"
+#define SECRET_PASS "${{ secrets.WIFI_PASS }}"
 
-          // MQTT Configuration
-          #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
-          #define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
-          #define MQTT_USER "${{ secrets.MQTT_USER }}"
-          #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
-          #define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
-          #define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
+// MQTT Configuration
+#define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
+#define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
+#define MQTT_USER "${{ secrets.MQTT_USER }}"
+#define MQTT_PASS "${{ secrets.MQTT_PASS }}"
+#define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
+#define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
 
-          // SMTP Email Configuration
-          #define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
-          #define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
-          #define SMTP_USER "${{ secrets.SMTP_USER }}"
-          #define SMTP_PASS "${{ secrets.SMTP_PASS }}"
-          #define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
-          #define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
+// SMTP Email Configuration
+#define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
+#define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
+#define SMTP_USER "${{ secrets.SMTP_USER }}"
+#define SMTP_PASS "${{ secrets.SMTP_PASS }}"
+#define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
+#define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
 
-          // Metadata
-          #define DEVICE_NAME "XIAO_S3_NODE"
-          #define FILE_NAME_PREFIX "IMG_"
+// Metadata
+#define DEVICE_NAME "XIAO_S3_NODE"
+#define FILE_NAME_PREFIX "IMG_"
 
-          #endif
-          EOF
+#endif
+EOF
           done
 
       - name: Compile All Sketches
         run: |
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
-            echo "Building: $sketch"
-            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --output-dir "$sketch/build"
+            echo "Building: \$sketch"
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "\$sketch" --output-dir "\$sketch/build"
           done
 
       - name: Upload Artifact
