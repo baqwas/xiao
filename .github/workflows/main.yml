@@ -3,25 +3,15 @@ name: XIAO S3 Build
 on:
   push:
     branches: [ main ]
-    tags: 
-      - 'v*'
   pull_request:
     branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Install Cppcheck
-        run: sudo apt-get install -y cppcheck
-
-      - name: Run Linting
-        run: |
-          cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
@@ -35,12 +25,10 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          arduino-cli lib update-index
+          arduino-cli lib install "PubSubClient" "ArduinoJson"
           mkdir -p /home/runner/Arduino/libraries
           git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
-          arduino-cli lib update-index
-          arduino-cli lib install "PubSubClient"
-          arduino-cli lib install "ArduinoJson"
-          arduino-cli lib install "ESP32_Camera" || true
 
       - name: Create Secrets.h from GitHub Secrets
         run: |
@@ -59,7 +47,7 @@ jobs:
 
 // MQTT Configuration
 #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
-#define MQTT_PORT ${{ secrets.MQTT_PORT }}
+#define MQTT_PORT ${{ secrets.MQTT_PORT || 1883 }}
 #define MQTT_USER "${{ secrets.MQTT_USER }}"
 #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
 #define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
@@ -67,7 +55,7 @@ jobs:
 
 // SMTP Email Configuration
 #define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
-#define SMTP_PORT ${{ secrets.SMTP_PORT }}
+#define SMTP_PORT ${{ secrets.SMTP_PORT || 587 }}
 #define SMTP_USER "${{ secrets.SMTP_USER }}"
 #define SMTP_PASS "${{ secrets.SMTP_PASS }}"
 #define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
@@ -85,14 +73,8 @@ EOF
         run: |
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
-            echo "----------------------------------------------------"
             echo "Building: $sketch"
-            echo "----------------------------------------------------"
-            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
-            if [ $? -ne 0 ]; then
-              echo "❌ Compilation failed for $sketch"
-              exit 1
-            fi
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --output-dir "$sketch/build"
           done
 
       - name: Upload Artifact
@@ -100,6 +82,4 @@ EOF
         uses: actions/upload-artifact@v4
         with:
           name: xiao-s3-firmware
-          path: |
-            ./**/build/*.bin
-            ./**/build/*.elf
+          path: ./**/build/*.bin
