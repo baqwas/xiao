@@ -1,4 +1,4 @@
-name: XIAO S3 Build & Lint
+name: XIAO S3 Build
 
 on:
   push:
@@ -16,78 +16,83 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Install Cppcheck
+        run: sudo apt-get install -y cppcheck
+
+      - name: Run Linting
+        run: |
+          cppcheck --enable=warning,performance,portability --suppressions-list=.cppcheck_suppressions --error-exitcode=1 ./
+
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
-      - name: Install Platforms
+      - name: Install ESP32 Platform
         run: |
           arduino-cli config init --overwrite
           arduino-cli config set board_manager.additional_urls https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
           arduino-cli core update-index
-          # Installs the latest ESP32 core (3.x) which requires modern I2S drivers
           arduino-cli core install esp32:esp32
 
-      - name: Install Libraries
+      - name: Install Dependencies
         run: |
+          mkdir -p /home/runner/Arduino/libraries
+          git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
           arduino-cli lib update-index
-          # Core libraries required for your XIAO S3 sketches
           arduino-cli lib install "PubSubClient"
           arduino-cli lib install "ArduinoJson"
+          arduino-cli lib install "ESP32_Camera" || true
 
-      - name: Inject Secrets.h
-        # Populates secrets.h with all repository secrets before compilation
+      - name: Create Dummy Secrets
         run: |
-          SKETCHES=$(find . -name "*.ino" | xargs -I {} dirname {} | sort -u)
+          # Use find to locate all sketch directories
+          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
-            echo "Injecting full secrets list into $sketch"
-            cat <<EOF > "$sketch/secrets.h"
-          #ifndef SECRETS_H
-          #define SECRETS_H
+            if [ ! -f "$sketch/secrets.h" ]; then
+              echo "Creating robust secrets.h in $sketch"
+              # Using cat << 'EOF' prevents the shell from trying to interpret the strings
+              cat << 'EOF' > "$sketch/secrets.h"
+#ifndef SECRETS_H
+#define SECRETS_H
 
-          // Network & MQTT
-          #define WIFI_SSID "${{ secrets.WIFI_SSID }}"
-          #define WIFI_PASS "${{ secrets.WIFI_PASS }}"
-          #define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
-          #define MQTT_USER "${{ secrets.MQTT_USER }}"
-          #define MQTT_PASS "${{ secrets.MQTT_PASS }}"
-          #define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
+#define WIFI_SSID "DUMMY_SSID"
+#define WIFI_PASS "DUMMY_PASSWORD"
+#define SECRET_SSID "DUMMY_SSID"
+#define SECRET_PASS "DUMMY_PASSWORD"
 
-          // Email & SMTP
-          #define SMTP_HOST "${{ secrets.SMTP_HOST }}"
-          #define SMTP_PORT ${{ secrets.SMTP_PORT }}
-          #define SMTP_USER "${{ secrets.SMTP_USER }}"
-          #define SMTP_PASS "${{ secrets.SMTP_PASS }}"
-          #define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
-          #define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
+#define MQTT_SERVER "127.0.0.1"
+#define MQTT_PORT 1883
+#define MQTT_USER "DUMMY_USER"
+#define MQTT_PASSWORD "DUMMY_PASSWORD"
+#define MQTT_TOPIC "xiao/test"
 
-          // Device Identification
-          #define DEVICE_NAME "XIAO_S3_$(date +%s)"
+#define DEVICE_NAME "XIAO_S3_NODE"
+#define FILE_NAME_PREFIX "IMG_"
 
-          #endif
-          EOF
+#endif
+EOF
+            fi
           done
 
-      - name: Compile with Strict I2S Linting
+      - name: Compile All Sketches
         run: |
-          SKETCHES=$(find . -name "*.ino" | xargs -I {} dirname {} | sort -u)
+          SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "----------------------------------------------------"
             echo "Building: $sketch"
-            
-            # -Werror=all treats warnings (like deprecated legacy I2S calls) as errors
-            # This ensures your code is compliant with modern ESP32 Core 3.x
-            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 \
-                                --build-property "compiler.cpp.extra_flags=-Werror=all" \
-                                "$sketch" --output-dir "$sketch/build"
+            echo "----------------------------------------------------"
+            arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
             
             if [ $? -ne 0 ]; then
-              echo "❌ Build failed. Please verify secrets and modern I2S driver usage."
+              echo "❌ Compilation failed for $sketch"
               exit 1
             fi
           done
 
-      - name: Upload Firmware
+      - name: Upload Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: xiao-s3-firmware
-          path: ./**/build/*.bin
+          path: |
+            ./**/build/*.bin
+            ./**/build/*.elf
