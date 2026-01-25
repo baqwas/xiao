@@ -35,40 +35,50 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # Create library folder
           mkdir -p /home/runner/Arduino/libraries
-          
-          # 1. Install Camera Driver (Manual clone for S3 compatibility)
           git clone --depth 1 https://github.com/espressif/esp32-camera.git /home/runner/Arduino/libraries/esp32-camera
-          
-          # 2. Update Index and install indexed libraries
           arduino-cli lib update-index
-          
-          # MQTT Library (The one missing in your last error)
           arduino-cli lib install "PubSubClient"
-          
-          # Audio/Microphone & Common S3 Sense libraries
+          arduino-cli lib install "ArduinoJson"
           arduino-cli lib install "ESP32_Camera" || true
-          arduino-cli lib install "ArduinoJson" || true  # Often used with MQTT
 
-      - name: Create Dummy Secrets
+      - name: Create Secrets.h from GitHub Secrets
         run: |
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
-            if [ ! -f "$sketch/secrets.h" ]; then
-              echo "Creating comprehensive placeholder secrets.h in $sketch"
-              {
-                echo '#ifndef SECRETS_H'
-                echo '#define SECRETS_H'
-                echo '#define WIFI_SSID "PLACEHOLDER_SSID"'
-                echo '#define WIFI_PASS "PLACEHOLDER_PASS"'
-                echo '#define SECRET_SSID "PLACEHOLDER_SSID"'
-                echo '#define SECRET_PASS "PLACEHOLDER_PASS"'
-                echo '#define SSID "PLACEHOLDER_SSID"'
-                echo '#define PASSWORD "PLACE_HOLDER_PASS"'
-                echo '#endif'
-              } > "$sketch/secrets.h"
-            fi
+            echo "Injecting GitHub Secrets into $sketch/secrets.h"
+            cat << EOF > "$sketch/secrets.h"
+#ifndef SECRETS_H
+#define SECRETS_H
+
+// WiFi Configuration
+#define WIFI_SSID "${{ secrets.WIFI_SSID }}"
+#define WIFI_PASS "${{ secrets.WIFI_PASS }}"
+#define SECRET_SSID "${{ secrets.WIFI_SSID }}"
+#define SECRET_PASS "${{ secrets.WIFI_PASS }}"
+
+// MQTT Configuration
+#define MQTT_SERVER "${{ secrets.MQTT_SERVER }}"
+#define MQTT_PORT ${{ secrets.MQTT_PORT }}
+#define MQTT_USER "${{ secrets.MQTT_USER }}"
+#define MQTT_PASS "${{ secrets.MQTT_PASS }}"
+#define MQTT_PASSWORD "${{ secrets.MQTT_PASS }}"
+#define MQTT_TOPIC "${{ secrets.MQTT_TOPIC }}"
+
+// SMTP Email Configuration
+#define SMTP_SERVER "${{ secrets.SMTP_SERVER }}"
+#define SMTP_PORT ${{ secrets.SMTP_PORT }}
+#define SMTP_USER "${{ secrets.SMTP_USER }}"
+#define SMTP_PASS "${{ secrets.SMTP_PASS }}"
+#define SENDER_EMAIL "${{ secrets.SENDER_EMAIL }}"
+#define RECIPIENT_EMAIL "${{ secrets.RECIPIENT_EMAIL }}"
+
+// Metadata
+#define DEVICE_NAME "XIAO_S3_NODE"
+#define FILE_NAME_PREFIX "IMG_"
+
+#endif
+EOF
           done
 
       - name: Compile All Sketches
@@ -76,7 +86,7 @@ jobs:
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "----------------------------------------------------"
-            echo "Compiling sketch in: $sketch"
+            echo "Building: $sketch"
             echo "----------------------------------------------------"
             arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
             
@@ -94,14 +104,3 @@ jobs:
           path: |
             ./**/build/*.bin
             ./**/build/*.elf
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            ./**/build/*.bin
-            ./**/build/*.elf
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
