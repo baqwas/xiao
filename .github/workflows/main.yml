@@ -35,7 +35,7 @@ jobs:
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "Injecting GitHub Secrets into $sketch/secrets.h"
-            # Using <<-EOF allows you to indent the content for YAML validity
+            # The '-' in <<-EOF allows us to indent the closing EOF using TABS
             cat <<-'EOF' > "$sketch/secrets.h"
             #ifndef SECRETS_H
             #define SECRETS_H
@@ -68,7 +68,7 @@ jobs:
 
             #endif
             EOF
-            # Remove leading tabs added by <<-EOF to keep the C++ file clean
+            # Cleanup leading whitespace for C++ compiler
             sed -i 's/^[[:blank:]]*//' "$sketch/secrets.h"
           done
 
