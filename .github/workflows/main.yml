@@ -35,8 +35,7 @@ jobs:
           SKETCHES=$(find . -name "*.ino" -exec dirname {} + | sort -u)
           for sketch in $SKETCHES; do
             echo "Injecting GitHub Secrets into $sketch/secrets.h"
-            # Indent the content with spaces for YAML validity.
-            # Use 'EOF' in quotes to prevent the shell from expanding variables before they reach the file.
+            # Note the indentation below; it MUST stay indented for YAML.
             cat <<'EOF' > "$sketch/secrets.h"
 #ifndef SECRETS_H
 #define SECRETS_H
