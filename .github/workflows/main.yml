@@ -89,7 +89,6 @@ EOF
             echo "Building: $sketch"
             echo "----------------------------------------------------"
             arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "$sketch" --verbose --output-dir "$sketch/build"
-            
             if [ $? -ne 0 ]; then
               echo "❌ Compilation failed for $sketch"
               exit 1
